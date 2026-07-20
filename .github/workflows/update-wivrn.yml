@@ -1,0 +1,70 @@
+name: Update WiVRn
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Optional stable WiVRn version, with or without the v prefix
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: dependency-updates
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
+
+      - name: Update release metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ -n "${TARGET_VERSION}" ]]; then
+            GITHUB_TOKEN="${GH_TOKEN}" bash scripts/update-wivrn.sh "${TARGET_VERSION}"
+          else
+            GITHUB_TOKEN="${GH_TOKEN}" bash scripts/update-wivrn.sh
+          fi
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet -- nix/sources.json; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+            echo "version=$(jq --raw-output .version nix/sources.json)" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Check and build update
+        if: steps.changes.outputs.changed == 'true'
+        run: nix flake check --print-build-logs
+
+      - name: Open update pull request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ github.token }}
+          branch: automation/update-wivrn
+          delete-branch: true
+          commit-message: "wivrn: update to v${{ steps.changes.outputs.version }}"
+          title: "wivrn: update to latest stable release"
+          body: |
+            Updates WiVRn to stable release `${{ steps.changes.outputs.version }}` and refreshes the matching WiVRn and Monado source hashes.
+
+            The package passed `nix flake check` before this PR was created.
+
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
