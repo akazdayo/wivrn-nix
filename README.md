@@ -1,10 +1,10 @@
 # wivrn-nix
 
-WiVRnの最新stable releaseを提供する、`x86_64-linux`向けNix flakeです。
+A Nix flake that provides the latest stable WiVRn release for `x86_64-linux`.
 
 ## Usage
 
-flake inputを追加し、NixOS moduleを読み込みます。
+Add the flake input and import its NixOS module.
 
 ```nix
 {
@@ -34,7 +34,7 @@ flake inputを追加し、NixOS moduleを読み込みます。
 
 ### Overlay
 
-NixOS moduleを直接読み込まず、overlayで`pkgs.wivrn`を差し替えることもできます。
+You can use the overlay to replace `pkgs.wivrn` instead of importing the NixOS module.
 
 ```nix
 {
@@ -49,14 +49,14 @@ NixOS moduleを直接読み込まず、overlayで`pkgs.wivrn`を差し替える�
 
 ### Package
 
-packageだけを指定することもできます。
+You can also set only the package.
 
 ```nix
 services.wivrn.package = wivrn-nix.packages.x86_64-linux.wivrn;
 ```
 
-WiVRnの更新はGitHub Actionsによって自動的にpull requestとして作成されます。
+WiVRn updates are submitted automatically as pull requests by GitHub Actions.
 
 ## License
 
-MIT
+This repository is licensed under the [MIT License](./LICENSE). WiVRn itself is licensed under [GPL-3.0-only](https://github.com/WiVRn/WiVRn/blob/master/COPYING).
