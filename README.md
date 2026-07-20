@@ -80,7 +80,7 @@ bash scripts/update-wivrn.sh 26.6.2
 nix flake check
 ```
 
-WiVRn更新は6時間ごと、flakeのnixpkgs input更新は週1回、それぞれ別のpull requestとして作成されます。ビルドに失敗した場合はpull requestを作成せず、workflowを失敗させます。自動mergeは行いません。
+WiVRn更新は6時間ごと、flakeのnixpkgs input更新は週1回、それぞれ別のpull requestとして作成されます。ビルドに失敗した場合はpull requestを作成せず、workflowを失敗させます。自動mergeは行いません。各workflowのNix build結果はMagic Nix CacheによってGitHub Actions cache内で共有されます。
 
 自動PRを有効にするには、GitHubリポジトリのSettings → Actions → Generalでworkflowのwrite権限と、GitHub Actionsによるpull request作成を許可してください。追加のPATやsecretは不要です。
 
