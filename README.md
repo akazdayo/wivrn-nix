@@ -47,12 +47,23 @@ You can use the overlay to replace `pkgs.wivrn` instead of importing the NixOS m
 }
 ```
 
+The module and overlay build WiVRn using the consuming system's package set,
+including its glibc and OpenVR compatibility libraries. This keeps the libraries
+loaded by Steam/Proton compatible with the host Steam environment.
+
 ### Package
 
 You can also set only the package.
 
 ```nix
 services.wivrn.package = wivrn-nix.packages.x86_64-linux.wivrn;
+```
+
+Direct package outputs use this flake's pinned nixpkgs. When assigning one to a
+NixOS system, align the input to avoid mixing glibc versions:
+
+```nix
+inputs.wivrn-nix.inputs.nixpkgs.follows = "nixpkgs";
 ```
 
 WiVRn updates are submitted automatically as pull requests by GitHub Actions.

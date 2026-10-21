@@ -9,7 +9,19 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
       sources = builtins.fromJSON (builtins.readFile ./nix/sources.json);
-      wivrn = import ./nix/package.nix { inherit pkgs sources; };
+      mkWivrn = pkgs: import ./nix/package.nix { inherit pkgs sources; };
+      wivrn = mkWivrn pkgs;
+
+      # Model a consumer's package customization so both entry points must
+      # preserve its package set instead of using this flake's pinned packages.
+      consumerOverlay = _final: prev: {
+        wivrn = prev.wivrn.overrideAttrs (old: {
+          passthru = (old.passthru or { }) // {
+            consumerPackage = true;
+          };
+        });
+      };
+      consumerPkgs = pkgs.extend consumerOverlay;
 
       moduleEvaluation = nixpkgs.lib.nixosSystem {
         inherit system;
@@ -33,8 +45,8 @@
         default = wivrn;
       };
 
-      overlays.default = _final: _prev: {
-        inherit wivrn;
+      overlays.default = _final: prev: {
+        wivrn = mkWivrn prev;
       };
 
       nixosModules.default =
@@ -47,7 +59,7 @@
             }
           ];
 
-          services.wivrn.package = lib.mkDefault wivrn;
+          services.wivrn.package = lib.mkDefault (mkWivrn pkgs);
         };
 
       checks.${system} = {
@@ -65,6 +77,19 @@
           assert moduleEvaluation.config.services.wivrn.package == wivrn;
           assert builtins.hasAttr "wivrn" moduleEvaluation.config.systemd.user.services;
           pkgs.runCommand "wivrn-module-check" { } ''
+            touch "$out"
+          '';
+
+        consumer-pkgs =
+          let
+            overlayPackage = (consumerPkgs.extend self.overlays.default).wivrn;
+            consumerModule = moduleEvaluation.extendModules {
+              modules = [ { nixpkgs.overlays = [ consumerOverlay ]; } ];
+            };
+          in
+          assert overlayPackage.consumerPackage or false;
+          assert consumerModule.config.services.wivrn.package.consumerPackage or false;
+          pkgs.runCommand "wivrn-consumer-pkgs-check" { } ''
             touch "$out"
           '';
 
