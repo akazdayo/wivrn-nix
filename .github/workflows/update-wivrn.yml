@@ -13,7 +13,6 @@ on:
 permissions:
   contents: write
   id-token: write
-  pull-requests: write
 
 concurrency:
   group: dependency-updates
@@ -25,12 +24,17 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: main
 
       - name: Install Nix
         uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
 
       - name: Enable Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
+        with:
+          use-flakehub: false
+          use-gha-cache: true
 
       - name: Update release metadata
         env:
@@ -57,27 +61,13 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         run: nix flake check --print-build-logs
 
-      - name: Open update pull request
+      - name: Commit and push update
         if: steps.changes.outputs.changed == 'true'
-        id: cpr
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-        with:
-          token: ${{ github.token }}
-          branch: automation/update-wivrn
-          delete-branch: true
-          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          commit-message: "wivrn: update to v${{ steps.changes.outputs.version }}"
-          title: "wivrn: update to latest stable release"
-          body: |
-            Updates WiVRn to stable release `${{ steps.changes.outputs.version }}` and refreshes the matching WiVRn and Monado source hashes.
-
-            The package passed `nix flake check` before this PR was created.
-
-            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-      - name: Enable auto-merge
-        if: steps.changes.outputs.changed == 'true' && steps.cpr.outputs.pull-request-number != ''
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh pr merge --auto --squash "${{ steps.cpr.outputs.pull-request-number }}"
+          VERSION: ${{ steps.changes.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- nix/sources.json
+          git commit -m "wivrn: update to v${VERSION}"
+          git push origin HEAD:main

@@ -66,7 +66,8 @@ NixOS system, align the input to avoid mixing glibc versions:
 inputs.wivrn-nix.inputs.nixpkgs.follows = "nixpkgs";
 ```
 
-WiVRn updates are submitted automatically as pull requests by GitHub Actions.
+GitHub Actions automatically updates WiVRn and nixpkgs, runs `nix flake check`,
+and commits successful updates directly to `main`.
 
 ## License
 
